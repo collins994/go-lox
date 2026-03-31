@@ -17,12 +17,25 @@ type lexer struct {
 func (l *lexer) scanToken() token {
 	var newToken = token{}
 	var nextCharacter byte
-	// TODO: skip any newlines in between tokens
-	nextCharacter, err := l.peekChar()
-	if err != nil {
-		//TODO: write a handler for out of range access
-		newToken = token{kind: EOF, lexeme: "", line: l.line, literal: nil}
-		return newToken
+	var err error;
+	// TODO: skip any newlines  and spaces in between tokens
+	for{
+		nextCharacter, err = l.peekChar()
+		if err != nil {
+			//TODO: write a handler for out of range access
+			newToken = token{kind: EOF, lexeme: "", line: l.line, literal: nil}
+			return newToken
+		}
+		if nextCharacter == '\n' {
+			l.line++
+		}
+
+		if nextCharacter == '\n' || nextCharacter == ' ' {
+			l.readChar() // read the character but ignore it
+			continue
+		} else {
+			break;
+		}
 	}
 
 	switch nextCharacter {
@@ -126,6 +139,7 @@ func scanTokens(source string) []token {
 	var lex = lexer{}
 	lex.source = cleanSrc([]byte(source))
 	lex.sourceLength = uint(len(lex.source))
+	lex.line = 1
 
 	for {
 		var newToken = lex.scanToken()
