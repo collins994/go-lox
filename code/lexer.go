@@ -17,9 +17,10 @@ type lexer struct {
 func (l *lexer) scanToken() token {
 	var newToken = token{}
 	var nextCharacter byte
-	var err error;
-	// TODO: skip any newlines  and spaces in between tokens
-	for{
+	var err error
+	// ignore whitespace in between tokens
+	// increment l.line at newlines
+	for {
 		nextCharacter, err = l.peekChar()
 		if err != nil {
 			//TODO: write a handler for out of range access
@@ -30,15 +31,16 @@ func (l *lexer) scanToken() token {
 			l.line++
 		}
 
-		if nextCharacter == '\n' || nextCharacter == ' ' {
+		if nextCharacter == '\n' || nextCharacter == ' ' || nextCharacter == '\t'{
 			l.readChar() // read the character but ignore it
 			continue
 		} else {
-			break;
+			break
 		}
 	}
 
 	switch nextCharacter {
+	// scanning single character tokens
 	case '(':
 		{
 			char, _ := l.readChar()
@@ -79,15 +81,99 @@ func (l *lexer) scanToken() token {
 			char, _ := l.readChar()
 			newToken = token{kind: PLUS, lexeme: string(char), line: l.line, literal: nil}
 		}
+	case '/':
+		{
+			char, _ := l.readChar()
+			newToken = token{kind: SLASH, lexeme: string(char), line: l.line, literal: nil}
+		}
+
+	case '*': 
+		{
+			char, _ := l.readChar()
+			newToken = token{kind: STAR, lexeme: string(char), line: l.line, literal: nil}
+		}
 	case ';':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: SEMICOLON, lexeme: string(char), line: l.line, literal: nil}
 		}
+	// scanning double character tokens
+	case '!': // !=, ! operators
+		{
+			char, _ := l.readChar() // read the character so we can peek the next
+			nextChar, err := l.peekChar()
+			// TODO: handle peekChar error
+			if err != nil || nextChar != '=' {
+				// assuming the error indicates end of input, ie there's no more characters after char
+				newToken = token{kind: BANG, lexeme: string(char), line: l.line, literal: nil}
+			} else {
+				var lexeme_bytes = make([]byte, 0, 2)
+				lexeme_bytes = append(lexeme_bytes, char)
+				char, _ = l.readChar()
+				lexeme_bytes = append(lexeme_bytes, char)
+				newToken = token{kind: BANG_EQUAL, lexeme: string(lexeme_bytes), line: l.line, literal: nil}
+			}
+			return newToken
+		}
+
+	case '=': // ==, = operators
+		{
+			char, _ := l.readChar() // read the character so we can peek the next
+			nextChar, err := l.peekChar()
+			// TODO: handle peekChar error
+			if err != nil || nextChar != '=' {
+				// assuming the error indicates end of input, ie there's no more characters after char
+				newToken = token{kind: EQUAL, lexeme: string(char), line: l.line, literal: nil}
+			} else {
+				var lexeme_bytes = make([]byte, 0, 2)
+				lexeme_bytes = append(lexeme_bytes, char)
+				char, _ = l.readChar()
+				lexeme_bytes = append(lexeme_bytes, char)
+				newToken = token{kind: EQUAL_EQUAL, lexeme: string(lexeme_bytes), line: l.line, literal: nil}
+			}
+			return newToken
+		}
+
+	case '<': // <=, < operators
+		{
+			char, _ := l.readChar() // read the character so we can peek the next
+			nextChar, err := l.peekChar()
+			// TODO: handle peekChar error
+			if err != nil || nextChar != '=' {
+				// assuming the error indicates end of input, ie there's no more characters after char
+				newToken = token{kind: LESS, lexeme: string(char), line: l.line, literal: nil}
+			} else {
+				var lexeme_bytes = make([]byte, 0, 2)
+				lexeme_bytes = append(lexeme_bytes, char)
+				char, _ = l.readChar()
+				lexeme_bytes = append(lexeme_bytes, char)
+				newToken = token{kind: LESS_EQUAL, lexeme: string(lexeme_bytes), line: l.line, literal: nil}
+			}
+			return newToken
+		}
+
+	case '>': // >=, > operators
+		{
+			char, _ := l.readChar() // read the character so we can peek the next
+			nextChar, err := l.peekChar()
+			// TODO: handle peekChar error
+			if err != nil || nextChar != '=' {
+				// assuming the error indicates end of input, ie there's no more characters after char
+				newToken = token{kind: GREATER, lexeme: string(char), line: l.line, literal: nil}
+			} else {
+				var lexeme_bytes = make([]byte, 0, 2)
+				lexeme_bytes = append(lexeme_bytes, char)
+				char, _ = l.readChar()
+				lexeme_bytes = append(lexeme_bytes, char)
+				newToken = token{kind: GREATER_EQUAL, lexeme: string(lexeme_bytes), line: l.line, literal: nil}
+			}
+			return newToken
+		}
+
 	default:
 		{
 			char, _ := l.readChar()
-			newToken = token{kind: STAR, lexeme: string(char), line: l.line, literal: nil}
+			newToken = token{kind: ILLEGAL, lexeme: string(char), line: l.line, literal: nil}
 		}
 	}
 
@@ -120,14 +206,29 @@ func (l *lexer) peekChar() (byte, error) {
 
 /** ============================== UTILITY FUNCTIONS ============================*/
 // removes all \r characters
+// remove all comments (lines starting with '//')
 func cleanSrc(src []byte) []byte {
-	var cleanSrc = make([]byte, len(src), len(src))
+	var cleanSrc = make([]byte, 0, len(src))
 	var counter uint32 = 0
-	for _, b := range src {
+	var inComment bool = false; // indicates when we are in a comment line
+	for i, b := range src {
+		//NOTE: we start by eliminating comments before eliminating carriage returns - comments contain carriage returns anyway
+		if b == '/' {
+			if !((i + 1) >= len(src)) && src[i + 1] == '/' { // so we know we are on a comment - we skip all characters upto a new line
+				inComment = true;
+			}
+		}
+		if inComment {
+			if !((i + 1) >= len(src)) && src[i + 1] == '\n' { // the last newline should be left in the source code to mark the line
+				inComment = false; // the next character will not be in the comment line
+			}
+			continue
+		}
+
 		if b == '\r' {
 			continue // skip '\r' bytes
 		}
-		cleanSrc[counter] = b
+		cleanSrc = append(cleanSrc, b)
 		counter++
 	}
 

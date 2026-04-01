@@ -9,7 +9,11 @@ func TestCleanSrc(t *testing.T) {
 		source         string
 		bytes_expected []byte
 	}{
-		{source: "hell\r\no\r\n", bytes_expected: []byte{'h', 'e', 'l', 'l', '\n', 'o', '\n', '\000', '\000'}},
+		{source: "hell\r\no\r\n", bytes_expected: []byte{'h', 'e', 'l', 'l', '\n', 'o', '\n'}},
+		{
+			source: "hell//this is a comment \r\nco//and this is a comment", 
+			bytes_expected: []byte{'h', 'e', 'l', 'l', '\n', 'c', 'o'},
+		},
 	}
 
 	for testNumber, test := range tests {
@@ -18,7 +22,7 @@ func TestCleanSrc(t *testing.T) {
 			t.Fatalf("TEST NUMBER %v: expected %v bytes, got %v bytes", testNumber, len(test.bytes_expected), len(bytes_got))
 		}
 
-		for counter := 0; counter < len(test.source); counter++ {
+		for counter := 0; counter < len(test.bytes_expected); counter++ {
 			var byte_expected = test.bytes_expected[counter]
 			var byte_got = bytes_got[counter]
 
@@ -76,19 +80,29 @@ func TestReadChar(t *testing.T) {
 }
 
 func TestScanTokens (t *testing.T) {
-	var source = "(){},.-+;"
+	var source = "(){},.-+;!!====<<=>//this is a comment \r\n>=/*"
 	var tokens_got = scanTokens(source)
 	var tokens_expected = []token{
-		token{kind: LEFT_PAREN, lexeme: "(", line: 0, literal: nil},
-		token{kind: RIGHT_PAREN, lexeme: ")", line: 0, literal: nil},
-		token{kind: LEFT_BRACE, lexeme: "{", line: 0, literal: nil},
-		token{kind: RIGHT_BRACE, lexeme: "}", line: 0, literal: nil},
-		token{kind: COMMA, lexeme: ",", line: 0, literal: nil},
-		token{kind: DOT, lexeme: ".", line: 0, literal: nil},
-		token{kind: MINUS, lexeme: "-", line: 0, literal: nil},
-		token{kind: PLUS, lexeme: "+", line: 0, literal: nil},
-		token{kind: SEMICOLON, lexeme: ";", line: 0, literal: nil},
-		token{kind: EOF, lexeme: "", line: 0, literal: nil},
+		token{kind: LEFT_PAREN, lexeme: "(", line: 1, literal: nil},
+		token{kind: RIGHT_PAREN, lexeme: ")", line: 1, literal: nil},
+		token{kind: LEFT_BRACE, lexeme: "{", line: 1, literal: nil},
+		token{kind: RIGHT_BRACE, lexeme: "}", line: 1, literal: nil},
+		token{kind: COMMA, lexeme: ",", line: 1, literal: nil},
+		token{kind: DOT, lexeme: ".", line: 1, literal: nil},
+		token{kind: MINUS, lexeme: "-", line: 1, literal: nil},
+		token{kind: PLUS, lexeme: "+", line: 1, literal: nil},
+		token{kind: SEMICOLON, lexeme: ";", line: 1, literal: nil},
+		token{kind: BANG, lexeme: "!", line: 1, literal: nil},
+		token{kind: BANG_EQUAL, lexeme: "!=", line: 1, literal: nil},
+		token{kind: EQUAL_EQUAL, lexeme: "==", line: 1, literal: nil},
+		token{kind: EQUAL, lexeme: "=", line: 1, literal: nil},
+		token{kind: LESS, lexeme: "<", line: 1, literal: nil},
+		token{kind: LESS_EQUAL, lexeme: "<=", line: 1, literal: nil},
+		token{kind: GREATER, lexeme: ">", line: 1, literal: nil},
+		token{kind: GREATER_EQUAL, lexeme: ">=", line: 2, literal: nil},
+		token{kind: SLASH, lexeme: "/", line: 2, literal: nil},
+		token{kind: STAR, lexeme: "*", line: 2, literal: nil},
+		token{kind: EOF, lexeme: "", line: 2, literal: nil},
 	}
 
 	if len(tokens_got) != len(tokens_expected) {

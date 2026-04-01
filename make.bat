@@ -32,11 +32,17 @@ if %ACTION% EQU tags (
 	EXIT /B
 )
 
+if %ACTION% EQU push (
+	git push https://github.com/collins994/go-lox.git main
+	EXIT /B
+)
+
 if %ACTION% EQU clean (
 	echo cleaning the build folder...
 	del .\build\*
 	echo done!
 	EXIT /B
 )
+
 
 echo invalid option "%ACTION%"
