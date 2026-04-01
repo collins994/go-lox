@@ -6,5 +6,3 @@
   make build
   make run
 </code>
-
-<h2>running: </h2>
