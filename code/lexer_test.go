@@ -80,7 +80,7 @@ func TestReadChar(t *testing.T) {
 }
 
 func TestScanTokens (t *testing.T) {
-	var source = "(){},.-+;!!====<<=>//this is a comment \r\n>=/*"
+	var source = "(){},.-+;!!====<<=>//this is a comment \r\n>=/*\"this is a string\""
 	var tokens_got = scanTokens(source)
 	var tokens_expected = []token{
 		token{kind: LEFT_PAREN, lexeme: "(", line: 1, literal: nil},
@@ -102,6 +102,7 @@ func TestScanTokens (t *testing.T) {
 		token{kind: GREATER_EQUAL, lexeme: ">=", line: 2, literal: nil},
 		token{kind: SLASH, lexeme: "/", line: 2, literal: nil},
 		token{kind: STAR, lexeme: "*", line: 2, literal: nil},
+		token{kind: STRING, lexeme: "this is a string", line: 2, literal: "this is a string"},
 		token{kind: EOF, lexeme: "", line: 2, literal: nil},
 	}
 

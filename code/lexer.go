@@ -171,11 +171,42 @@ func (l *lexer) scanToken() token {
 			}
 			return newToken
 		}
+	
+
+	// scan strings
+	case '"': {
+		// read untill we get the closing " or until the end of input (in which case we stop reading, report an error, then return an ILLEGAL token)
+		// since Lox supports newlines in strings, we need to update l.line at newlines
+		var string_bytes []byte;
+		var nextChar byte;
+		var char byte;
+		var startLine = l.line; // mark the line where the string begins (for error reporting)
+		l.readChar(); // discard the opening "
+		for {
+			nextChar, err = l.peekChar();
+			if err != nil { // err indicates end of input (before the closing ")
+				l.reportError("Unterminated string", startLine);
+				newToken = token{kind: ILLEGAL, lexeme: string(string_bytes), line: l.line, literal: nil}
+				break;
+			}
+			if nextChar == '\n' {
+				l.line++;
+			}
+			if nextChar != '"' { // only append up to the last character before the closing "
+				char, _ = l.readChar() 
+				string_bytes  = append(string_bytes, char);
+			} else {
+				newToken = token{kind: STRING, lexeme: string(string_bytes), line: l.line, literal: string(string_bytes)}
+				l.readChar(); // discard the closing " before breaking
+				break;
+			}
+		}
+	}
 
 	default:
 		{
 			char, _ := l.readChar()
-			l.reportError(fmt.Sprintf("Unexpected character %c", char))
+			l.reportError(fmt.Sprintf("Unexpected character %c", char), l.line)
 			newToken = token{kind: ILLEGAL, lexeme: string(char), line: l.line, literal: nil}
 		}
 	}
@@ -208,8 +239,8 @@ func (l *lexer) peekChar() (byte, error) {
 }
 
 // reports an error to the user
-func (l *lexer) reportError(message string) {
-	fmt.Printf("[line %v] Error: %v\n", l.line, message)
+func (l *lexer) reportError(message string, line uint) {
+	fmt.Printf("[line %v] Error: %v\n", line, message)
 	l.hadError = true
 }
 
