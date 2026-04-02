@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 )
 
 type lexer struct {
@@ -9,6 +10,7 @@ type lexer struct {
 	line         uint // the line of the source code where the current character is
 	source       []byte
 	sourceLength uint
+	hadError     bool // indicates whether or not the lexer encountered an error during scanning
 }
 
 /** =========================================== LEXER METHODS ======================== */
@@ -23,7 +25,7 @@ func (l *lexer) scanToken() token {
 	for {
 		nextCharacter, err = l.peekChar()
 		if err != nil {
-			//TODO: write a handler for out of range access
+			//end of input
 			newToken = token{kind: EOF, lexeme: "", line: l.line, literal: nil}
 			return newToken
 		}
@@ -31,7 +33,7 @@ func (l *lexer) scanToken() token {
 			l.line++
 		}
 
-		if nextCharacter == '\n' || nextCharacter == ' ' || nextCharacter == '\t'{
+		if nextCharacter == '\n' || nextCharacter == ' ' || nextCharacter == '\t' {
 			l.readChar() // read the character but ignore it
 			continue
 		} else {
@@ -87,7 +89,7 @@ func (l *lexer) scanToken() token {
 			newToken = token{kind: SLASH, lexeme: string(char), line: l.line, literal: nil}
 		}
 
-	case '*': 
+	case '*':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: STAR, lexeme: string(char), line: l.line, literal: nil}
@@ -104,7 +106,7 @@ func (l *lexer) scanToken() token {
 			nextChar, err := l.peekChar()
 			// TODO: handle peekChar error
 			if err != nil || nextChar != '=' {
-				// assuming the error indicates end of input, ie there's no more characters after char
+				// The error indicates end of input, ie there's no more characters after char
 				newToken = token{kind: BANG, lexeme: string(char), line: l.line, literal: nil}
 			} else {
 				var lexeme_bytes = make([]byte, 0, 2)
@@ -122,7 +124,7 @@ func (l *lexer) scanToken() token {
 			nextChar, err := l.peekChar()
 			// TODO: handle peekChar error
 			if err != nil || nextChar != '=' {
-				// assuming the error indicates end of input, ie there's no more characters after char
+				// The error indicates end of input, ie there's no more characters after char
 				newToken = token{kind: EQUAL, lexeme: string(char), line: l.line, literal: nil}
 			} else {
 				var lexeme_bytes = make([]byte, 0, 2)
@@ -140,7 +142,7 @@ func (l *lexer) scanToken() token {
 			nextChar, err := l.peekChar()
 			// TODO: handle peekChar error
 			if err != nil || nextChar != '=' {
-				// assuming the error indicates end of input, ie there's no more characters after char
+				// The error indicates end of input, ie there's no more characters after char
 				newToken = token{kind: LESS, lexeme: string(char), line: l.line, literal: nil}
 			} else {
 				var lexeme_bytes = make([]byte, 0, 2)
@@ -158,7 +160,7 @@ func (l *lexer) scanToken() token {
 			nextChar, err := l.peekChar()
 			// TODO: handle peekChar error
 			if err != nil || nextChar != '=' {
-				// assuming the error indicates end of input, ie there's no more characters after char
+				// The error indicates end of input, ie there's no more characters after char
 				newToken = token{kind: GREATER, lexeme: string(char), line: l.line, literal: nil}
 			} else {
 				var lexeme_bytes = make([]byte, 0, 2)
@@ -173,6 +175,7 @@ func (l *lexer) scanToken() token {
 	default:
 		{
 			char, _ := l.readChar()
+			l.reportError(fmt.Sprintf("Unexpected character %c", char))
 			newToken = token{kind: ILLEGAL, lexeme: string(char), line: l.line, literal: nil}
 		}
 	}
@@ -195,7 +198,7 @@ func (l *lexer) readChar() (byte, error) {
 // peekChar returns the character that the next call to readChar is gonna return
 // it returns an error if there's not enough character in the source code
 // eg source == "helo", current == 0, peekChar(0) => 'h'
-// unless readChar is called, peekChar will always return the same character, i.e it does not change the value of l.current
+// unless readChar is called, peekChar will always return the same character
 func (l *lexer) peekChar() (byte, error) {
 	if l.current >= l.sourceLength {
 		// TODO: define an error for out of range access
@@ -204,23 +207,29 @@ func (l *lexer) peekChar() (byte, error) {
 	return l.source[l.current], nil
 }
 
+// reports an error to the user
+func (l *lexer) reportError(message string) {
+	fmt.Printf("[line %v] Error: %v\n", l.line, message)
+	l.hadError = true
+}
+
 /** ============================== UTILITY FUNCTIONS ============================*/
 // removes all \r characters
 // remove all comments (lines starting with '//')
 func cleanSrc(src []byte) []byte {
 	var cleanSrc = make([]byte, 0, len(src))
 	var counter uint32 = 0
-	var inComment bool = false; // indicates when we are in a comment line
+	var inComment bool = false // indicates when we are in a comment line
 	for i, b := range src {
 		//NOTE: we start by eliminating comments before eliminating carriage returns - comments contain carriage returns anyway
 		if b == '/' {
-			if !((i + 1) >= len(src)) && src[i + 1] == '/' { // so we know we are on a comment - we skip all characters upto a new line
-				inComment = true;
+			if !((i + 1) >= len(src)) && src[i+1] == '/' { // so we know we are on a comment - we skip all characters upto a new line
+				inComment = true
 			}
 		}
 		if inComment {
-			if !((i + 1) >= len(src)) && src[i + 1] == '\n' { // the last newline should be left in the source code to mark the line
-				inComment = false; // the next character will not be in the comment line
+			if !((i + 1) >= len(src)) && src[i+1] == '\n' { // the last newline should be left in the source code to mark the line
+				inComment = false // the next character will not be in the comment line
 			}
 			continue
 		}
@@ -244,6 +253,9 @@ func scanTokens(source string) []token {
 
 	for {
 		var newToken = lex.scanToken()
+		if newToken.kind == ILLEGAL {
+			continue // skip illegal tokens
+		}
 		tokens = append(tokens, newToken)
 		if newToken.kind == EOF {
 			break

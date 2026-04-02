@@ -6,3 +6,8 @@
   make build
   make run
 </code>
+
+<h2> running a file </h2>
+<code>
+	make run <filepath>
+</code>
