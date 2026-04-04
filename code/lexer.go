@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strconv"
 	"fmt"
 )
 
@@ -23,7 +24,7 @@ func (l *lexer) scanToken() token {
 	// ignore whitespace in between tokens
 	// increment l.line at newlines
 	for {
-		nextCharacter, err = l.peekChar()
+		nextCharacter, err = l.peek()
 		if err != nil {
 			//end of input
 			newToken = token{kind: EOF, lexeme: "", line: l.line, literal: nil}
@@ -103,8 +104,8 @@ func (l *lexer) scanToken() token {
 	case '!': // !=, ! operators
 		{
 			char, _ := l.readChar() // read the character so we can peek the next
-			nextChar, err := l.peekChar()
-			// TODO: handle peekChar error
+			nextChar, err := l.peek()
+			// TODO: handle peek error
 			if err != nil || nextChar != '=' {
 				// The error indicates end of input, ie there's no more characters after char
 				newToken = token{kind: BANG, lexeme: string(char), line: l.line, literal: nil}
@@ -121,8 +122,8 @@ func (l *lexer) scanToken() token {
 	case '=': // ==, = operators
 		{
 			char, _ := l.readChar() // read the character so we can peek the next
-			nextChar, err := l.peekChar()
-			// TODO: handle peekChar error
+			nextChar, err := l.peek()
+			// TODO: handle peek error
 			if err != nil || nextChar != '=' {
 				// The error indicates end of input, ie there's no more characters after char
 				newToken = token{kind: EQUAL, lexeme: string(char), line: l.line, literal: nil}
@@ -139,8 +140,8 @@ func (l *lexer) scanToken() token {
 	case '<': // <=, < operators
 		{
 			char, _ := l.readChar() // read the character so we can peek the next
-			nextChar, err := l.peekChar()
-			// TODO: handle peekChar error
+			nextChar, err := l.peek()
+			// TODO: handle peek error
 			if err != nil || nextChar != '=' {
 				// The error indicates end of input, ie there's no more characters after char
 				newToken = token{kind: LESS, lexeme: string(char), line: l.line, literal: nil}
@@ -157,8 +158,8 @@ func (l *lexer) scanToken() token {
 	case '>': // >=, > operators
 		{
 			char, _ := l.readChar() // read the character so we can peek the next
-			nextChar, err := l.peekChar()
-			// TODO: handle peekChar error
+			nextChar, err := l.peek()
+			// TODO: handle peek error
 			if err != nil || nextChar != '=' {
 				// The error indicates end of input, ie there's no more characters after char
 				newToken = token{kind: GREATER, lexeme: string(char), line: l.line, literal: nil}
@@ -183,7 +184,7 @@ func (l *lexer) scanToken() token {
 		var startLine = l.line; // mark the line where the string begins (for error reporting)
 		l.readChar(); // discard the opening "
 		for {
-			nextChar, err = l.peekChar();
+			nextChar, err = l.peek();
 			if err != nil { // err indicates end of input (before the closing ")
 				l.reportError("Unterminated string", startLine);
 				newToken = token{kind: ILLEGAL, lexeme: string(string_bytes), line: l.line, literal: nil}
@@ -202,6 +203,53 @@ func (l *lexer) scanToken() token {
 			}
 		}
 	}
+
+
+	// scan numbers
+	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+		{
+			var number_bytes []byte;
+			var ok bool = true; // false iff the number lexeme has an error
+			// we read until we hit the end of the number (a whitespace, end of input, or a non digit character)
+			for {
+				nextChar, err := l.peek();
+				if err != nil { // end of input
+					break;
+					// number, _ := strconv.ParseFloat(number_bytes, 64);
+					// newToken = token{kind: NUMBER, lexeme: string(number_bytes), line: l.line, literal: number}
+					// return newToken;
+				}
+
+				if !(nextChar >= '0' && nextChar <= '9') { // if nextChar is not a number
+					if nextChar != '.' { // we've hit the end of the number
+						break;
+					}
+
+					if nextChar == '.' {
+						char, _ := l.readChar(); // read the character so we can peek the next
+						number_bytes = append(number_bytes, char);
+						// check if there is a character after the . and that it is a digit. if it is not - that is a trailing . error
+						nextChar, err = l.peek(); 
+						if err != nil || !(nextChar >= '0' && nextChar <= '9') { 
+							l.reportError("Trailing .", l.line);
+							break
+						}
+					}
+				}
+
+				// the character is a digit - just read it 
+				char, _ := l.readChar();
+				number_bytes = append(number_bytes, char);
+			}
+
+			if ok {
+			 number, _ := strconv.ParseFloat(string(number_bytes), 64);
+			 newToken = token{kind: NUMBER, lexeme: string(number_bytes), line: l.line, literal: number}
+			}
+			if !ok {
+			 newToken = token{kind: ILLEGAL, lexeme: string(number_bytes), line: l.line, literal: nil}
+			}
+		}
 
 	default:
 		{
@@ -226,16 +274,29 @@ func (l *lexer) readChar() (byte, error) {
 	return b, nil
 }
 
-// peekChar returns the character that the next call to readChar is gonna return
+// peek returns the character that the next call to readChar is gonna return
 // it returns an error if there's not enough character in the source code
-// eg source == "helo", current == 0, peekChar(0) => 'h'
-// unless readChar is called, peekChar will always return the same character
-func (l *lexer) peekChar() (byte, error) {
+// eg source == "helo", current == 0, peek() => 'h'
+// unless readChar is called, peek will always return the same character
+func (l *lexer) peek() (byte, error) {
 	if l.current >= l.sourceLength {
 		// TODO: define an error for out of range access
 		return byte(0), errors.New("not enough characters")
 	}
 	return l.source[l.current], nil
+}
+
+
+// peekNext returns the character that the second call to readChar is gonna return
+// it returns an error if there's not enough character in the source code
+// eg source == "helo", current == 0, peekNext() => 'e'
+// unless readChar is called, peekNext will always return the same character
+func (l *lexer) peekNext() (byte, error) {
+	if (l.current + 1) >= l.sourceLength {
+		// TODO: define an error for out of range access
+		return byte(0), errors.New("not enough characters")
+	}
+	return l.source[l.current + 1], nil
 }
 
 // reports an error to the user

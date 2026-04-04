@@ -49,7 +49,7 @@ func TestPeekChar(t *testing.T) {
 
 	for testNumber, test := range tests {
 		lex.current = test.current
-		byte_got, err := lex.peekChar()
+		byte_got, err := lex.peek()
 		if err != nil {
 			t.Fatalf("peekChar error: test number: #%v, err: %v\n", testNumber, err)
 		}
@@ -80,7 +80,7 @@ func TestReadChar(t *testing.T) {
 }
 
 func TestScanTokens (t *testing.T) {
-	var source = "(){},.-+;!!====<<=>//this is a comment \r\n>=/*\"this is a string\""
+	var source = "(){},.-+;!!====<<=>//this is a comment \r\n>=/*\"this is a string\"88.8"
 	var tokens_got = scanTokens(source)
 	var tokens_expected = []token{
 		token{kind: LEFT_PAREN, lexeme: "(", line: 1, literal: nil},
@@ -103,6 +103,7 @@ func TestScanTokens (t *testing.T) {
 		token{kind: SLASH, lexeme: "/", line: 2, literal: nil},
 		token{kind: STAR, lexeme: "*", line: 2, literal: nil},
 		token{kind: STRING, lexeme: "this is a string", line: 2, literal: "this is a string"},
+		token{kind: NUMBER, lexeme: "88.8", line: 2, literal: 88.8},
 		token{kind: EOF, lexeme: "", line: 2, literal: nil},
 	}
 
