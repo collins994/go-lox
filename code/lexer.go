@@ -215,9 +215,6 @@ func (l *lexer) scanToken() token {
 				nextChar, err := l.peek();
 				if err != nil { // end of input
 					break;
-					// number, _ := strconv.ParseFloat(number_bytes, 64);
-					// newToken = token{kind: NUMBER, lexeme: string(number_bytes), line: l.line, literal: number}
-					// return newToken;
 				}
 
 				if !(nextChar >= '0' && nextChar <= '9') { // if nextChar is not a number
@@ -229,9 +226,11 @@ func (l *lexer) scanToken() token {
 						char, _ := l.readChar(); // read the character so we can peek the next
 						number_bytes = append(number_bytes, char);
 						// check if there is a character after the . and that it is a digit. if it is not - that is a trailing . error
+						// report the error and declare the token ILLEGAL
 						nextChar, err = l.peek(); 
 						if err != nil || !(nextChar >= '0' && nextChar <= '9') { 
 							l.reportError("Trailing .", l.line);
+							ok = false;
 							break
 						}
 					}

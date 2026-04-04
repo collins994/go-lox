@@ -37,6 +37,11 @@ if %ACTION% EQU push (
 	EXIT /B
 )
 
+if %ACTION% EQU pull (
+	git pull https://github.com/collins994/go-lox.git
+	EXIT /B
+)
+
 if %ACTION% EQU clean (
 	echo cleaning the build folder...
 	del .\build\*
