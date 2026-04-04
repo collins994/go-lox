@@ -35,6 +35,8 @@ func main() {
 func run(source string) {
 	var tokens = scanTokens(source)
 	for _, token := range tokens {
-		println(token.toString())
+		if token.kind != EOF {
+			println(token.toString())
+		}
 	}
 }

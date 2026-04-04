@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
-	"strconv"
 	"fmt"
+	"strconv"
 )
 
 type lexer struct {
@@ -12,6 +12,7 @@ type lexer struct {
 	source       []byte
 	sourceLength uint
 	hadError     bool // indicates whether or not the lexer encountered an error during scanning
+	keywords     map[string]tokenKind
 }
 
 /** =========================================== LEXER METHODS ======================== */
@@ -42,66 +43,66 @@ func (l *lexer) scanToken() token {
 		}
 	}
 
-	switch nextCharacter {
+	switch {
 	// scanning single character tokens
-	case '(':
+	case nextCharacter == '(':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: LEFT_PAREN, lexeme: string(char), line: l.line, literal: nil}
 		}
-	case ')':
+	case nextCharacter == ')':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: RIGHT_PAREN, lexeme: string(char), line: l.line, literal: nil}
 		}
-	case '{':
+	case nextCharacter == '{':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: LEFT_BRACE, lexeme: string(char), line: l.line, literal: nil}
 		}
-	case '}':
+	case nextCharacter == '}':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: RIGHT_BRACE, lexeme: string(char), line: l.line, literal: nil}
 		}
-	case ',':
+	case nextCharacter == ',':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: COMMA, lexeme: string(char), line: l.line, literal: nil}
 		}
-	case '.':
+	case nextCharacter == '.':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: DOT, lexeme: string(char), line: l.line, literal: nil}
 		}
-	case '-':
+	case nextCharacter == '-':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: MINUS, lexeme: string(char), line: l.line, literal: nil}
 		}
-	case '+':
+	case nextCharacter == '+':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: PLUS, lexeme: string(char), line: l.line, literal: nil}
 		}
-	case '/':
+	case nextCharacter == '/':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: SLASH, lexeme: string(char), line: l.line, literal: nil}
 		}
 
-	case '*':
+	case nextCharacter == '*':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: STAR, lexeme: string(char), line: l.line, literal: nil}
 		}
-	case ';':
+	case nextCharacter == ';':
 		{
 			char, _ := l.readChar()
 			newToken = token{kind: SEMICOLON, lexeme: string(char), line: l.line, literal: nil}
 		}
 	// scanning double character tokens
-	case '!': // !=, ! operators
+	case nextCharacter == '!': // !=, ! operators
 		{
 			char, _ := l.readChar() // read the character so we can peek the next
 			nextChar, err := l.peek()
@@ -119,7 +120,7 @@ func (l *lexer) scanToken() token {
 			return newToken
 		}
 
-	case '=': // ==, = operators
+	case nextCharacter == '=': // ==, = operators
 		{
 			char, _ := l.readChar() // read the character so we can peek the next
 			nextChar, err := l.peek()
@@ -137,7 +138,7 @@ func (l *lexer) scanToken() token {
 			return newToken
 		}
 
-	case '<': // <=, < operators
+	case nextCharacter == '<': // <=, < operators
 		{
 			char, _ := l.readChar() // read the character so we can peek the next
 			nextChar, err := l.peek()
@@ -155,7 +156,7 @@ func (l *lexer) scanToken() token {
 			return newToken
 		}
 
-	case '>': // >=, > operators
+	case nextCharacter == '>': // >=, > operators
 		{
 			char, _ := l.readChar() // read the character so we can peek the next
 			nextChar, err := l.peek()
@@ -172,82 +173,111 @@ func (l *lexer) scanToken() token {
 			}
 			return newToken
 		}
-	
 
 	// scan strings
-	case '"': {
-		// read untill we get the closing " or until the end of input (in which case we stop reading, report an error, then return an ILLEGAL token)
-		// since Lox supports newlines in strings, we need to update l.line at newlines
-		var string_bytes []byte;
-		var nextChar byte;
-		var char byte;
-		var startLine = l.line; // mark the line where the string begins (for error reporting)
-		l.readChar(); // discard the opening "
-		for {
-			nextChar, err = l.peek();
-			if err != nil { // err indicates end of input (before the closing ")
-				l.reportError("Unterminated string", startLine);
-				newToken = token{kind: ILLEGAL, lexeme: string(string_bytes), line: l.line, literal: nil}
-				break;
-			}
-			if nextChar == '\n' {
-				l.line++;
-			}
-			if nextChar != '"' { // only append up to the last character before the closing "
-				char, _ = l.readChar() 
-				string_bytes  = append(string_bytes, char);
-			} else {
-				newToken = token{kind: STRING, lexeme: string(string_bytes), line: l.line, literal: string(string_bytes)}
-				l.readChar(); // discard the closing " before breaking
-				break;
+	case nextCharacter == '"':
+		{
+			// read untill we get the closing " or until the end of input (in which case we stop reading, report an error, then return an ILLEGAL token)
+			// since Lox supports newlines in strings, we need to update l.line at newlines
+			var string_bytes []byte
+			var nextChar byte
+			var char byte
+			var startLine = l.line // mark the line where the string begins (for error reporting)
+			l.readChar()           // discard the opening "
+			for {
+				nextChar, err = l.peek()
+				if err != nil { // err indicates end of input (before the closing ")
+					l.reportError("Unterminated string", startLine)
+					newToken = token{kind: ILLEGAL, lexeme: string(string_bytes), line: l.line, literal: nil}
+					break
+				}
+				if nextChar == '\n' {
+					l.line++
+				}
+				if nextChar != '"' { // only append up to the last character before the closing "
+					char, _ = l.readChar()
+					string_bytes = append(string_bytes, char)
+				} else {
+					newToken = token{kind: STRING, lexeme: string(string_bytes), line: l.line, literal: string(string_bytes)}
+					l.readChar() // discard the closing " before breaking
+					break
+				}
 			}
 		}
-	}
-
 
 	// scan numbers
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
+	case (nextCharacter >= '0' && nextCharacter <= '9'):
 		{
-			var number_bytes []byte;
-			var ok bool = true; // false iff the number lexeme has an error
+			var number_bytes []byte
+			var ok bool = true // false iff the number lexeme has an error
 			// we read until we hit the end of the number (a whitespace, end of input, or a non digit character)
 			for {
-				nextChar, err := l.peek();
+				nextChar, err := l.peek()
 				if err != nil { // end of input
-					break;
+					break
 				}
 
 				if !(nextChar >= '0' && nextChar <= '9') { // if nextChar is not a number
 					if nextChar != '.' { // we've hit the end of the number
-						break;
+						break
 					}
 
 					if nextChar == '.' {
-						char, _ := l.readChar(); // read the character so we can peek the next
-						number_bytes = append(number_bytes, char);
+						char, _ := l.readChar() // read the character so we can peek the next
+						number_bytes = append(number_bytes, char)
 						// check if there is a character after the . and that it is a digit. if it is not - that is a trailing . error
 						// report the error and declare the token ILLEGAL
-						nextChar, err = l.peek(); 
-						if err != nil || !(nextChar >= '0' && nextChar <= '9') { 
-							l.reportError("Trailing .", l.line);
-							ok = false;
+						nextChar, err = l.peek()
+						if err != nil || !(nextChar >= '0' && nextChar <= '9') {
+							l.reportError("Trailing .", l.line)
+							ok = false
 							break
 						}
 					}
 				}
 
-				// the character is a digit - just read it 
-				char, _ := l.readChar();
-				number_bytes = append(number_bytes, char);
+				// the character is a digit - just read it
+				char, _ := l.readChar()
+				number_bytes = append(number_bytes, char)
 			}
 
 			if ok {
-			 number, _ := strconv.ParseFloat(string(number_bytes), 64);
-			 newToken = token{kind: NUMBER, lexeme: string(number_bytes), line: l.line, literal: number}
+				number, _ := strconv.ParseFloat(string(number_bytes), 64)
+				newToken = token{kind: NUMBER, lexeme: string(number_bytes), line: l.line, literal: number}
 			}
 			if !ok {
-			 newToken = token{kind: ILLEGAL, lexeme: string(number_bytes), line: l.line, literal: nil}
+				newToken = token{kind: ILLEGAL, lexeme: string(number_bytes), line: l.line, literal: nil}
 			}
+		}
+
+	// scan identifiers and keywords
+	case (nextCharacter >= 'a' && nextCharacter <= 'z') || (nextCharacter >= 'A' && nextCharacter <= 'Z') || nextCharacter == '_':
+		{
+			var lexeme_bytes = []byte{}
+			var token_kind tokenKind
+			var lexeme_string string
+			// we read until we hit the end of the keyword (or identifier) - marked by end of input or any character that is a not alphanumeric or underscore
+			for {
+				nextCharacter, err := l.peek()
+				if err != nil { // END OF INPUT
+					break
+				}
+				if !((nextCharacter >= 'a' && nextCharacter <= 'z') || (nextCharacter >= 'A' && nextCharacter <= 'Z') || (nextCharacter >= '0' && nextCharacter <= '9') || nextCharacter == '_') { // if the next character is not a alpanumeric of underscore
+					break
+				}
+				char, _ := l.readChar();
+				lexeme_bytes = append(lexeme_bytes, char)
+			}
+
+			// check against reserved keywords
+			lexeme_string = string(lexeme_bytes)
+			if keyword, ok := l.keywords[lexeme_string]; ok {
+				token_kind = keyword
+			} else {
+				token_kind = IDENTIFIER
+			}
+
+			newToken = token{kind: token_kind, lexeme: string(lexeme_bytes), line: l.line, literal: string(lexeme_bytes)}
 		}
 
 	default:
@@ -285,7 +315,6 @@ func (l *lexer) peek() (byte, error) {
 	return l.source[l.current], nil
 }
 
-
 // peekNext returns the character that the second call to readChar is gonna return
 // it returns an error if there's not enough character in the source code
 // eg source == "helo", current == 0, peekNext() => 'e'
@@ -295,7 +324,7 @@ func (l *lexer) peekNext() (byte, error) {
 		// TODO: define an error for out of range access
 		return byte(0), errors.New("not enough characters")
 	}
-	return l.source[l.current + 1], nil
+	return l.source[l.current+1], nil
 }
 
 // reports an error to the user
@@ -341,6 +370,24 @@ func scanTokens(source string) []token {
 	lex.source = cleanSrc([]byte(source))
 	lex.sourceLength = uint(len(lex.source))
 	lex.line = 1
+	lex.keywords = map[string]tokenKind{
+		"and" : AND, 
+		"class" : CLASS, 
+		"else" : ELSE, 
+		"false" : FALSE, 
+		"for" : FOR, 
+		"fun" : FUN, 
+		"if" : IF, 
+		"nil" : NIL, 
+		"or" : OR, 
+		"print" : PRINT, 
+		"return" : RETURN, 
+		"super" : SUPER, 
+		"this" : THIS, 
+		"true" : TRUE, 
+		"var" : VAR, 
+		"while" : WHILE, 
+	}
 
 	for {
 		var newToken = lex.scanToken()
