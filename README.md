@@ -9,5 +9,5 @@
 
 <h2> running a file </h2>
 <code>
-	make run <filepath>
+	make run [filepath]
 </code>
