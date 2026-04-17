@@ -2,12 +2,12 @@
 
 set "ACTION=%1"
 set "EXECUTABLE_FILE=go_lox.exe"
+set "GIT_BRANCH="
 
 if "%ACTION%" == ""  (
 	echo USAGE: make build ^| run ^[file^]
 	EXIT /B
 )
-
 
 if %ACTION% EQU build (
 	echo building into .\build\...
@@ -26,6 +26,11 @@ if %ACTION% EQU run (
 	EXIT /B
 )
 
+if %ACTION% EQU ast (
+	go run tool\generateAST.go ast
+	EXIT /B
+)
+
 if %ACTION% EQU tags (
 	echo generating tags...
 	ctags -R  --exclude=build
@@ -33,7 +38,7 @@ if %ACTION% EQU tags (
 )
 
 if %ACTION% EQU push (
-	git push https://github.com/collins994/go-lox.git main
+	git push https://github.com/collins994/go-lox.git %GIT_BRANCH%
 	EXIT /B
 )
 

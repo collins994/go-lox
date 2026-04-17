@@ -1,0 +1,6 @@
+<h2> grammar for the tokenizer </h2>
+<code>
+TOKEN ::= OPERATOR | PUNCTUATION 
+OPERATOR ::= 
+PUNCTUATION ::=  "(" | ")" 
+</code>
