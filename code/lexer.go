@@ -117,7 +117,7 @@ scanAgain:
 
 	case S_INVALID:
 		{
-			if character == ' ' || character == '\n' || character == '\t' || character == '\n' || (character == '\000' && l.index >= l.source_len-1) {
+			if character == ' '|| character == '\t' || character == '\n' || (character == '\000' && l.index >= l.source_len-1) {
 				state = S_START
 			} else {
 				goto scanAgain
