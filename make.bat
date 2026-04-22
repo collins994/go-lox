@@ -2,7 +2,7 @@
 
 set "ACTION=%1"
 set "EXECUTABLE_FILE=go_lox.exe"
-set "GIT_BRANCH="
+set "GIT_BRANCH=better_lexer"
 
 if "%ACTION%" == ""  (
 	echo USAGE: make build ^| run ^[file^]

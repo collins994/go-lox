@@ -17,6 +17,8 @@ const (
 	S_START State = iota
 	S_COMMENT
 	S_INVALID
+
+	S_BANG
 )
 
 /*
@@ -96,6 +98,11 @@ scanAgain:
 				{
 					nextToken.kind = STAR
 				}
+			// case character == '!':
+			// 	{
+			// 		nextToken.kind = BANG;
+			// 		l.index++
+			// 	}
 
 			default:
 				{
@@ -104,6 +111,9 @@ scanAgain:
 				}
 			}
 		} // S_START
+	
+	case S_BANG : {
+	}
 
 	case S_INVALID:
 		{
